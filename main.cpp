@@ -3,8 +3,23 @@
 
 
 int main(int argc,char** argv) {
-    huffman::compress("../data","../out");
-//    static_code::decompress("../out","../decompressed_data");
+//    using namespace huffman;
+//
+//    unit u;
+//    node n;
+//    n.character='c';
+//    n.code_len = 10;
+//    n.code=6;
+//    memcpy(&u,&n, sizeof(unit));
+//
+//    std::cout<< sizeof(unit);
+//    return 0;
+
+    std::string input = "../data";
+    std::string output =  "../out";
+    huffman::compress(&input,&output);
+
+
     return 0;
 }
 
