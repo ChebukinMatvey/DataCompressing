@@ -3,8 +3,12 @@
 #include "static_code_len.h"
 
 
+
+
 void read_data(std::string,byte**,int*);
 dictionary* create_dict(byte*,int);
+
+
 
 
 void static_code::compress(std::string file_input, std::string file_output) {
@@ -33,11 +37,11 @@ void static_code::compress(std::string file_input, std::string file_output) {
     out.write(&dict_size, sizeof(char));
     out.write(dict->data(),dict->size());
     out.write((const char*)(bits->bytes()), bits_count);
+    out.flush();
     out.close();
 
     // Free memory usage to avoid leeks
     delete data;
-    delete bits;
     delete dict;
 }
 
@@ -46,41 +50,39 @@ void static_code::decompress(std::string file_in, std::string file_out) {
     int length;
     byte *data;
     utils::bitset* bits;
-    byte *dict = new char[1]; // init pointer for memory copy
-    byte* text;
-    byte dict_size;
+    char* dict = new char[1]; // init pointer for memory copy
+    char* text;
+    unsigned char dict_size;
     int bits_count;
     int text_length;
-    byte code_length;
+    short code_length;
 
     read_data(std::move(file_in), &data, &length);
     memcpy(&text_length,&data[0], 4);
-    dict_size = data[4];
+    dict_size = static_cast<unsigned char>(data[4]);
     code_length = static_cast<byte>(ceil(log2(dict_size)));
     bits_count= length - dict_size - 5;
     text = new char[text_length];
 
     memcpy(dict, &data[1 + 4], static_cast<size_t>(dict_size));
 
-    for (int i = 0; i < dict_size; ++i) {
-        std::cout<<dict[i];
-    }
 
     bits = new utils::bitset(&data[dict_size + 1 + 4],bits_count);
 
 
     for(int i = 0 ; i < text_length; i++){
-        text[i] = dict[bits->pop(static_cast<utils::byte>(code_length))];
+        int index =bits->pop(static_cast<utils::byte>(code_length));
+        text[i] = dict[index];
     }
 
 
-    std::ofstream out(file_out,std::ios_base::binary);
+    std::ofstream out(file_out);
     out.write(text,text_length);
     out.close();
 
-    delete text;
     delete dict;
     delete data;
+    delete text;
 }
 
 

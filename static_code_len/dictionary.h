@@ -34,8 +34,8 @@ public:
         return characters[code];
     }
 
-    byte size() {
-        return static_cast<byte>(characters.size());
+    int size() {
+        return characters.size();
     }
 
     const char *data() {

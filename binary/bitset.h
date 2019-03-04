@@ -49,7 +49,7 @@ public:
     bitset(int len);
     bitset(char *, int);
     void push(byte,byte);
-    byte pop(byte);
+    char pop(byte);
     byte* bytes();
     void print_state();
     void print();
