@@ -29,6 +29,7 @@ void static_code::compress(std::string file_input, std::string file_output) {
     // [length dict - 1 byte ][dict[0]....dict[length-1]][bits]
     std::ofstream out(file_output, std::ios_base::binary);
     char dict_size =dict->size();
+    out.write((char*)(&length), sizeof(length));
     out.write(&dict_size, sizeof(char));
     out.write(dict->data(),dict->size());
     out.write((const char*)(bits->bytes()), bits_count);
@@ -53,17 +54,25 @@ void static_code::decompress(std::string file_in, std::string file_out) {
     byte code_length;
 
     read_data(std::move(file_in), &data, &length);
-    dict_size = data[0];
+    memcpy(&text_length,&data[0], 4);
+    dict_size = data[4];
     code_length = static_cast<byte>(ceil(log2(dict_size)));
-    bits_count= length - dict_size - 1;
-    text_length = static_cast<int>(floor(bits_count * 8 / (double)code_length));
+    bits_count= length - dict_size - 5;
     text = new char[text_length];
-    memcpy(dict, &data[1], static_cast<size_t>(dict_size));
-    bits = new utils::bitset(&data[dict_size+1],bits_count);
+
+    memcpy(dict, &data[1 + 4], static_cast<size_t>(dict_size));
+
+    for (int i = 0; i < dict_size; ++i) {
+        std::cout<<dict[i];
+    }
+
+    bits = new utils::bitset(&data[dict_size + 1 + 4],bits_count);
+
 
     for(int i = 0 ; i < text_length; i++){
         text[i] = dict[bits->pop(static_cast<utils::byte>(code_length))];
     }
+
 
     std::ofstream out(file_out,std::ios_base::binary);
     out.write(text,text_length);

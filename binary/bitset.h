@@ -44,6 +44,7 @@ private:
     int pop_byte_index = 0;     // index for pop
     int pop_bit_index = 0;      // index for pop
 
+
 public:
     bitset(int len);
     bitset(char *, int);
@@ -55,6 +56,5 @@ public:
     bool end();
     ~bitset();
 };
-
 }
 #endif

@@ -6,7 +6,7 @@
 
 namespace utils {
 
-unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111,0b00111111,0b01111111,0b11111111};
+unsigned int mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111,0b00111111,0b01111111,0b11111111};
 
     bitset::bitset(int len) {
         this->len = len;
@@ -22,6 +22,7 @@ unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111
     }
 
     void bitset::push(byte b,byte code_len) {
+
         byte available_bits = 8 - current_bit_index;
 
         if(code_len > available_bits){ // bit overflow   000 0_01 01| 0
@@ -30,6 +31,7 @@ unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111
             bits[current_byte_index] |= ( b <<( 8 - (code_len - available_bits)));
             current_bit_index = code_len - available_bits;
         }
+
         else{
             bits[current_byte_index] |= ( b << (available_bits - code_len));
             current_bit_index = code_len + 8 - available_bits;
@@ -38,13 +40,14 @@ unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111
                 current_bit_index=0;
             }
         }
+
         assert(current_byte_index<=len);
     }
 
 
 
     byte bitset::pop(byte code_len) {
-        byte b;
+        byte b = 0;
 
         if(pop_bit_index + code_len > 8 )
         {
@@ -66,8 +69,8 @@ unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111
         {
 //            std::cout<<"Current byte "<<std::bitset<8>(bits[pop_byte_index])<<std::endl;
 //            std::cout<<"Shifted byte "<<std::bitset<8>(( bits[pop_byte_index] >> (8 - pop_bit_index - code_len)))<<std::endl;
-            b =  mask[code_len-1] &  ( bits[pop_byte_index] >> (8 - pop_bit_index - code_len));
-            pop_bit_index +=code_len;
+            b =  mask[code_len - 1] &  ( bits[pop_byte_index] >> (8 - pop_bit_index - code_len));
+            pop_bit_index += code_len;
             if(pop_bit_index == 8){
                 pop_bit_index = 0;
                 pop_byte_index++;
@@ -105,7 +108,7 @@ unsigned char mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111
     }
 
     bool bitset::end() {
-        if(pop_byte_index <= len)
+        if(pop_byte_index <= len-1)
             return false;
         else
             return true;
