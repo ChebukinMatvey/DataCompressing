@@ -6,13 +6,14 @@
 #include <fstream>
 #include <assert.h>
 #include<bitset>
+#include "../binary/dynamic_bitset.h"
+#include "../static_code_len/dictionary.h"
 
 # define claster 4096
 
 
 // list of tree leaves for fast access after feel codes
-std::list<huffman::node*> threaded_tree;
-
+std::map<char,huffman::node*> threaded_tree;
 
 std::vector<char> *read_data(std::string *);
 void feel_codes(huffman::node*);
@@ -56,12 +57,40 @@ void huffman::compress(std::string *file_in, std::string *file_out) {
 
     feel_codes(tree.front());
 
-    for (auto _node : threaded_tree) {
-        std::cout<< _node->character <<" - "<<std::bitset<8>(_node->code)<< " code len = "<< static_cast<unsigned short>(_node->code_len)<<std::endl;
+    dynamic_bitset::dynamic_bitset bitset;
+    for (char c : *data) {
+        bitset.push(threaded_tree[c]->code,threaded_tree[c]->code_len);
+        std::cout<< c <<" - "<<std::bitset<8>(threaded_tree[c]->code)<< " code len = "<< static_cast<unsigned short>(threaded_tree[c]->code_len)<<std::endl;
     }
+
+
+    size_t size = data->size();
+    byte count_nodes = threaded_tree.size();
+    std::ofstream out(*file_out, std::ios_base::binary);
+    out.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    out.write(reinterpret_cast<const char*>(&count_nodes), sizeof(count_nodes));
+    out.write(bitset.bytes(),bitset.size());
+    out.close();
+
+    delete data;
 }
 
 
+
+void huffman::decompress(std::string *file_in, std::string *file_out) {
+    std::ifstream in(*file_in,std::ios_base::binary);
+    size_t size;
+    byte* data = new byte[1];
+    unsigned char count_nodes;
+
+    in.read(reinterpret_cast<char*>(&size), sizeof(size));
+    in.read(reinterpret_cast<char*>(&count_nodes), sizeof(count_nodes));
+    in.read(data,size);
+    dynamic_bitset::dynamic_bitset* bitset = new dynamic_bitset::dynamic_bitset(&data[0],size);
+    for(int i = 0;i<count_nodes;i++){
+
+    }
+}
 
 /**
  * Recursive tree following
@@ -94,7 +123,7 @@ void feel_codes(huffman::node* _node){
         _node->code_len=depth;
         _node->code=current_code;
 //        cout<<"Char - "<<_node->character<< " set code "<<bitset<8>(current_code)<<" code len = "<<depth<<endl;
-        threaded_tree.push_back(_node);
+        threaded_tree[_node->character]=_node;
     }
     current_code >>=1;
     depth--;
