@@ -21,6 +21,7 @@ unsigned int mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111,
         this->bits = reinterpret_cast<byte *>(data); // pointer initialization
     }
 
+
     void bitset::push(byte b,byte code_len) {
 
         byte available_bits = 8 - current_bit_index;
@@ -43,8 +44,6 @@ unsigned int mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111,
 
         assert(current_byte_index<=len);
     }
-
-
 
     char bitset::pop(byte code_len) {
         char b = 0;
@@ -98,6 +97,5 @@ unsigned int mask[8] = {0b00000001, 0b00000011,0b00000111,0b00001111,0b00011111,
     }
 
     bitset::~bitset() {
-        delete bits;
     }
 }
