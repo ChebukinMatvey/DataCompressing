@@ -1,20 +1,11 @@
 #include<string>
 
-/*
- *  Huffman compression algorithm
- *
- *      Structure node -  node for huffman tree
- *
- *
- * */
-
-
 namespace huffman {
 
 
     struct node{
         char character;
-        char code;
+        unsigned long code;
         unsigned char code_len;
         int weight;
         node *left = nullptr, *right = nullptr;
@@ -34,16 +25,7 @@ namespace huffman {
         }
     };
 
-    struct unit{
-        char character;
-        char code;
-        unsigned char code_len;
-    };
-
     void compress(std::string*, std::string*);
 
     void decompress(std::string*, std::string*);
 }
-
-
-

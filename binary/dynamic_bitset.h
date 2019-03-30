@@ -9,7 +9,7 @@ namespace dynamic_bitset{
 
     class dynamic_bitset{
     private:
-        std::vector<byte>*bits;
+        std::vector<long>* bits;
         int current_push_byte_index;
         int current_push_bit_index;
         int current_pop_byte_index;
@@ -18,11 +18,11 @@ namespace dynamic_bitset{
     public:
         dynamic_bitset();
         dynamic_bitset(char*,size_t);
-        void push(byte,byte);
+        void push(long,byte);
         byte pop(byte);
         void print_current_byte_state();
         void print_bytes();
-        byte* bytes();
+        long* bytes();
         size_t size();
         ~dynamic_bitset();
     };

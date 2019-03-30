@@ -6,6 +6,7 @@
 #include <fstream>
 #include <assert.h>
 #include<bitset>
+#include <cstring>
 #include "../binary/dynamic_bitset.h"
 #include "../static_code_len/dictionary.h"
 
@@ -14,9 +15,13 @@
 
 // list of tree leaves for fast access after feel codes
 std::map<char,huffman::node*> threaded_tree;
-
+huffman::node* decode_char(huffman::node*,dynamic_bitset::dynamic_bitset*);
 std::vector<char> *read_data(std::string *);
 void feel_codes(huffman::node*);
+huffman::node* create_tree(std::list<huffman::node*>*);
+
+unsigned long current_code ;
+short depth ;
 
 
 /**
@@ -29,81 +34,120 @@ void feel_codes(huffman::node*);
  *
  * @param:file_in input file
  * @param:file_out compressed file
- * @return: void
  *
  * */
 void huffman::compress(std::string *file_in, std::string *file_out) {
-
     std::vector<char> *data = read_data(file_in);
     std::map<char, int> pf;
-    std::list<node *> tree;
+    std::list<node *> nodes;
 
     for (char c : *data)
         pf[c]++;
 
     for (auto pair : pf)
-        tree.push_back(new node(pair.first, pair.second));
+        nodes.push_back(new node(pair.first, pair.second));
 
-    auto cmp = [](node *left, node *rigth) { return left->weight < rigth->weight; };
+    node* root = create_tree(&nodes);
 
-    while (tree.size() != 1) {
-        tree.sort(cmp);
-        node *left = tree.front();
-        tree.pop_front();
-        node *right = tree.front();
-        tree.pop_front();
-        tree.push_back(new node(left, right));
-    }
-
-    feel_codes(tree.front());
+    feel_codes(root);
 
     dynamic_bitset::dynamic_bitset bitset;
     for (char c : *data) {
         bitset.push(threaded_tree[c]->code,threaded_tree[c]->code_len);
-        std::cout<< c <<" - "<<std::bitset<8>(threaded_tree[c]->code)<< " code len = "<< static_cast<unsigned short>(threaded_tree[c]->code_len)<<std::endl;
     }
 
+    for(std::pair<char,huffman::node*> n : threaded_tree)
+        std::cout<< n.first << " - "<<std::bitset<16>(n.second->code)<< " code len = "<< static_cast<unsigned short>(n.second->code_len)<<std::endl;
 
-    size_t size = data->size();
-    byte count_nodes = threaded_tree.size();
+
+    bitset.print_bytes();
+    std::cout<<std::endl;
     std::ofstream out(*file_out, std::ios_base::binary);
-    out.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    out.write(reinterpret_cast<const char*>(&count_nodes), sizeof(count_nodes));
-    out.write(bitset.bytes(),bitset.size());
+
+    size_t file_size = data->size();
+    size_t map_size =  pf.size();
+    out.write(reinterpret_cast<const char*>(&file_size), sizeof(file_size));
+    out.write(reinterpret_cast<const char*>(&map_size), sizeof(map_size));
+    for(std::pair<char,int> pair: pf){
+        out.write(reinterpret_cast<const char *>(&pair.first), sizeof(pair.first));
+        out.write(reinterpret_cast<const char *>(&pair.second), sizeof(pair.second));
+
+    }
+    out.write(reinterpret_cast<const char *>(bitset.bytes()), bitset.size()*8);
     out.close();
 
     delete data;
 }
 
-
-
 void huffman::decompress(std::string *file_in, std::string *file_out) {
-    std::ifstream in(*file_in,std::ios_base::binary);
-    size_t size;
-    byte* data = new byte[1];
-    unsigned char count_nodes;
 
-    in.read(reinterpret_cast<char*>(&size), sizeof(size));
-    in.read(reinterpret_cast<char*>(&count_nodes), sizeof(count_nodes));
-    in.read(data,size);
-    dynamic_bitset::dynamic_bitset* bitset = new dynamic_bitset::dynamic_bitset(&data[0],size);
-    for(int i = 0;i<count_nodes;i++){
+    std::map<char,int> pf;
+    std::vector<char>* data =  read_data(file_in);
+    unsigned int byte_position = 0;
+    std::list<node*> nodes;
+    size_t map_size;
+    size_t bytes_count;
 
+    memcpy(&bytes_count,&(*data)[0], sizeof(bytes_count));
+    memcpy(&map_size,&(*data)[sizeof(bytes_count)], sizeof(map_size));
+
+    byte_position += sizeof(map_size) + sizeof(bytes_count);
+    for(int i = 0; i < map_size; ++i){
+        unsigned int freq;
+        char c = (*data)[5*i + byte_position];
+        memcpy(&freq,&(*data)[5*i+1 + byte_position],sizeof(freq));
+        pf[c]=freq;
     }
+
+    byte_position += map_size*5;
+    dynamic_bitset::dynamic_bitset* bitset = new dynamic_bitset::dynamic_bitset(&(*data)[byte_position] , data->size() - byte_position);
+
+    for (auto pair : pf)
+        nodes.push_back(new node(pair.first, pair.second));
+
+    node* root = create_tree(&nodes);
+    current_code = 0l;
+    depth=0;
+    feel_codes(root);
+    bitset->print_bytes();
+
+    std::ofstream out(*file_out,std::ios_base::binary);
+    for (int i =0; i < bytes_count; ++i) {
+        out.write(&decode_char(root,bitset)->character, sizeof(char));
+    }
+    delete data;
 }
+
+
+
+huffman::node* create_tree(std::list<huffman::node*>* nodes){
+    using namespace huffman;
+    node* current_root = nullptr;
+    auto cmp = [](node *left, node *rigth) { return left->weight < rigth->weight; };
+
+    while(nodes->size()!=1){
+        nodes->sort(cmp);
+        node*left=nodes->front();
+        nodes->pop_front();
+        node* right=nodes->front();
+        nodes->pop_front();
+        nodes->push_back(new node(left,right));
+    }
+    return nodes->front();
+}
+
+
 
 /**
  * Recursive tree following
- * Takes root, than add for every tree leave charcode and charcode length
- * If node is tree leave add this node to the threaded tree for fast access in the future
+ * Takes root, than add for every tree leaf charcode and charcode length
+ * If node is tree leaf add this node to the threaded tree for fast access in the future
  *
  * @param: current_code - global variable for current charcode
  * @param: depth - global variable for charcode length or tree depth
  * @param: node - current processing node
  * @return: void
  */
-char current_code ;
-short depth ;
 void feel_codes(huffman::node* _node){
     using namespace huffman;
     using namespace std;
@@ -127,6 +171,24 @@ void feel_codes(huffman::node* _node){
     }
     current_code >>=1;
     depth--;
+}
+
+
+huffman::node* decode_char(huffman::node* nod,dynamic_bitset::dynamic_bitset* bitset){
+    if(nod->left == nullptr && nod->right == nullptr)
+        return nod;
+
+    byte b = bitset->pop(1);
+    if(nod->left!= nullptr && b == 0) {
+        nod = decode_char(nod->left, bitset);
+        if(nod->left == nullptr && nod->right == nullptr)
+            return nod;
+    }
+    if(nod->right!= nullptr && b == 1) {
+        nod = decode_char(nod->right, bitset);
+        if(nod->left == nullptr && nod->right == nullptr)
+            return nod;
+    }
 }
 
 
